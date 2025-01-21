@@ -18,6 +18,8 @@ uint16_t colorWheel(uint8_t pos) {
   }
 }
 
+uint16_t displayBlack = dma_display->color565(0, 0, 0);
+
 void display_init() {
   HUB75_I2S_CFG::i2s_pins _pins={R1_PIN, G1_PIN, B1_PIN, R2_PIN, G2_PIN, B2_PIN, A_PIN, B_PIN, C_PIN, D_PIN, E_PIN, LAT_PIN, OE_PIN, CLK_PIN};
   HUB75_I2S_CFG mxconfig(
@@ -26,10 +28,13 @@ void display_init() {
 		1,
 		_pins
 	);
-  // mxconfig.gpio.e = E_PIN;
+
   mxconfig.driver = HUB75_I2S_CFG::FM6124;
   dma_display = new MatrixPanel_I2S_DMA(mxconfig);
 
   dma_display->begin();
-  //dma_display->setPanelBrightness(110);
+}
+
+void emptydisplay() {
+  dma_display->fillScreen(displayBlack);
 }

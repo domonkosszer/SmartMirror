@@ -18,12 +18,11 @@ extern unsigned long lastStatusSend;
 // NTP
 extern bool wifiFirstConnected;
 
-extern bool syncEventTriggered; // True if a time event has been triggered
+extern bool syncEventTriggered;
 
 //RGB display
 extern MatrixPanel_I2S_DMA *dma_display;
 
-//Current time and date
 extern struct tm timeinfo;
 
 //Flags to trigger display section updates

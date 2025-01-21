@@ -3,5 +3,6 @@
 
 void displayClock();
 void displayDate();
+//void updateTime();
 
 #endif

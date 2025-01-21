@@ -8,6 +8,7 @@
 #define API_KEY "d46fd88f142e7e527c71d423876dd23a"
 
 void fetchWeather();
+void displayIcon();
 void displayWeather();
 void updateWeather();
 
@@ -15,6 +16,6 @@ extern String weatherDescription;
 extern float temperature;
 extern unsigned long lastWeatherUpdate;
 
-#define WEATHER_UPDATE_INTERVAL 60000 // 1 minute in milliseconds
+#define WEATHER_UPDATE_INTERVAL 1000 // 1 minute in milliseconds
 
 #endif

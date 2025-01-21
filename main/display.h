@@ -25,5 +25,6 @@
 
 uint16_t colorWheel(uint8_t pos);
 void display_init();
+void emptydisplay();
 
 #endif

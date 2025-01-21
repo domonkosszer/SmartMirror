@@ -1,5 +1,4 @@
 #include <Ticker.h>
-#include <esp_task_wdt.h>
 
 #include "config.h"
 #include "main.h"
@@ -10,21 +9,22 @@
 #include "weather.h"
 #include "touch.h"
 
-#define EVERY_SECOND     1000
-#define EVERY_MINUTE     EVERY_SECOND * 60
-#define EVERY_10_MINUTES EVERY_MINUTE * 10
-
 Ticker displayTicker;
 unsigned long prevEpoch;
 unsigned long lastNTPUpdate;
 
-void setup(){
-  display_init();
+bool isClock = true;
+bool isWeather = false;
 
+void setup(){
   Serial.begin(115200);
   delay(10);
 
-  Serial1.begin(9600, SERIAL_8N1, D0, D1);
+  display_init();
+  Serial.println("Display initialized.");
+
+  touch_init();
+  Serial.println("NRF initialized.");
 
   Serial.print("Connecting to ");
   Serial.println(WIFI_SSID);
@@ -39,25 +39,14 @@ void setup(){
   configTime(NTP_OFFSET, 0, NTP_ADDRESS);
   lastNTPUpdate = millis();
 
-  //logStatusMessage(WiFi.localIP().toString());
-
   displayTicker.attach_ms(30, displayUpdater);
-
-  fetchWeather();
-
-  touch_init();
-  Serial.println("NRF initialized.");
-
 }
 
 uint8_t wheelval = 0;
 
 void loop() {
 
-  if (Serial1.available() > 0) {  // Check if data is available from Arduino Nano
-    String receivedMessage = Serial1.readStringUntil('\n');  // Read the message from Nano
-    Serial.println("Received: " + receivedMessage);  // Print the message to Serial Monitor
-  }
+  updateTouch();
 
   if (WiFi.status() != WL_CONNECTED) {
     WiFi.reconnect();
@@ -68,21 +57,22 @@ void loop() {
     configTime(NTP_OFFSET, 0, NTP_ADDRESS);
     lastNTPUpdate = millis();
   }
-
-  displayWeather();
-  updateWeather();
-
-  touch_update();
 }
 
 void displayUpdater() {
-  if(!getLocalTime(&timeinfo)){
-    return;
-  }
+  if (isClock) {
+    if(!getLocalTime(&timeinfo)){
+      return;
+    }
 
-  unsigned long epoch = mktime(&timeinfo);
-  if (epoch != prevEpoch) {
-    //displayClock();
-    prevEpoch = epoch;
+    unsigned long epoch = mktime(&timeinfo);
+    if (epoch != prevEpoch) {
+      displayClock();
+      prevEpoch = epoch;
+    }
+  } 
+  if (isWeather) {
+    displayWeather();
+    updateWeather();
   }
 }

@@ -8,60 +8,83 @@
 #include <ArduinoJson.h>
 
 // Weather variables
-String weatherDescription;
 float temperature;
+int humidity;
 unsigned long lastWeatherUpdate = 0;
 
 // Function prototypes
 void fetchWeather();
 void displayWeather();
+void displayIcon(const String &iconCode);
 
 // Fetch weather data from OpenWeatherMap
 void fetchWeather() {
-  if (WiFi.status() == WL_CONNECTED) {
-    HTTPClient http;
-    String weatherURL = String(OPENWEATHER_URL) + CITY + "&units=metric&appid=" + API_KEY;
+  const int maxRetries = 5; // Maximum number of retry attempts
+  int retryCount = 0;
+  bool success = false;
 
-    http.begin(weatherURL);
-    int httpResponseCode = http.GET();
+  while (retryCount < maxRetries && !success) {
+    if (WiFi.status() == WL_CONNECTED) {
+      HTTPClient http;
+      String weatherURL = String(OPENWEATHER_URL) + CITY + "&units=metric&appid=" + API_KEY;
 
-    if (httpResponseCode == 200) {
-      String payload = http.getString();
-      Serial.println(payload);
+      http.begin(weatherURL);
+      int httpResponseCode = http.GET();
 
-      // Parse JSON
-      JsonDocument doc;
-      DeserializationError error = deserializeJson(doc, payload);
+      if (httpResponseCode == 200) {
+        String payload = http.getString();
+        Serial.println(payload);
 
-      if (error) {
-        Serial.print(F("deserializeJson() failed: "));
-        Serial.println(error.c_str());
+        StaticJsonDocument<1024> doc;
+        DeserializationError error = deserializeJson(doc, payload);
+
+        if (error) {
+          Serial.print(F("deserializeJson() failed: "));
+          Serial.println(error.c_str());
+          retryCount++;
+          delay(2000); // Wait 2 seconds before retrying
+        } else {
+          // Extract temperature and humidity
+          temperature = doc["main"]["temp"].as<float>();
+          humidity = doc["main"]["humidity"].as<int>();
+
+          // Extract weather icon code
+          String iconCode = doc["weather"][0]["icon"].as<String>();
+          Serial.println("Icon Code: " + iconCode);
+
+          Serial.println("Temperature: " + String(temperature) + " °C");
+          Serial.println("Humidity: " + String(humidity) + " %");
+
+          // Update display
+          displayIcon(iconCode);
+          displayWeather();
+
+          success = true; // Data successfully fetched and parsed
+        }
       } else {
-        weatherDescription = doc["weather"][0]["description"].as<String>();
-        temperature = doc["main"]["temp"].as<float>();
-
-        Serial.println("Weather: " + weatherDescription);
-        Serial.println("Temperature: " + String(temperature) + " °C");
-
-        lastWeatherUpdate = millis();
+        Serial.println("Failed to fetch weather data. HTTP response code: " + String(httpResponseCode));
+        retryCount++;
+        delay(2000); // Wait 2 seconds before retrying
       }
+      http.end();
     } else {
-      Serial.println("Failed to fetch weather data. HTTP response code: " + String(httpResponseCode));
+      retryCount++;
     }
+  }
 
-    http.end();
-  } else {
-    Serial.println("WiFi not connected.");
+  if (!success) {
+    Serial.println("Failed to fetch weather data after " + String(maxRetries) + " attempts.");
   }
 }
 
-// Display weather on the RGB matrix
+
+// Display weather information on the RGB matrix
 void displayWeather() {
   int centerX = PANEL_WIDTH / 2; // Horizontal center
   int centerY = PANEL_HEIGHT / 2; // Vertical center
 
   // Clear previous weather data
-  dma_display->fillRect(0, centerY - 8, PANEL_WIDTH, 16, 0);
+  dma_display->fillRect(0, centerY - 16, PANEL_WIDTH, 32, 0);
 
   // Display temperature (centered)
   String tempString = String(temperature, 1) + " C";
@@ -70,13 +93,45 @@ void displayWeather() {
   dma_display->setTextColor(dma_display->color565(255, 255, 255));
   dma_display->print(tempString);
 
-  // Display weather description (centered)
-  String description = weatherDescription.substring(0, 10); // Truncate if necessary
-  int descWidth = description.length() * 6;
-  dma_display->setCursor(centerX - descWidth / 2, centerY);
-  dma_display->print(description);
+  // Display humidity (centered below temperature)
+  String humidityString = String(humidity) + " %";
+  int humidityWidth = humidityString.length() * 6;
+  dma_display->setCursor(centerX - humidityWidth / 2, centerY + 8);
+  dma_display->print(humidityString);
 }
 
+// Display weather icon based on icon code
+void displayIcon(const String &iconCode) {
+  const uint8_t clearSkyIcon[] = {
+    0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 
+  };
+
+  const uint8_t rainIcon[] = {
+    0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+  };
+
+  const uint8_t cloudsIcon[] = {
+    0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff, 0xff,
+  };
+
+  const uint8_t *icon = nullptr;
+
+  // Match icon code to corresponding bitmap
+  if (iconCode == "01d" || iconCode == "01n") {
+    icon = clearSkyIcon;
+  } else if (iconCode.startsWith("02") || iconCode.startsWith("03") || iconCode.startsWith("04")) {
+    icon = cloudsIcon;
+  } else if (iconCode.startsWith("09") || iconCode.startsWith("10")) {
+    icon = rainIcon;
+  }
+
+  // Display the icon if bitmap is available
+  if (icon != nullptr) {
+    dma_display->drawBitmap(10, 10, icon, 32, 32, dma_display->color565(255, 255, 255));
+  } else {
+    Serial.println("No icon available for code: " + iconCode);
+  }
+}
 
 void updateWeather() {
   unsigned long currentMillis = millis();
@@ -84,6 +139,5 @@ void updateWeather() {
   if (currentMillis - lastWeatherUpdate >= WEATHER_UPDATE_INTERVAL) {
     fetchWeather();
     lastWeatherUpdate = currentMillis; // Ensure proper interval tracking
-    displayWeather(); // Update display immediately after fetching
   }
 }
