@@ -2,7 +2,7 @@
 
 #include "config.h"
 #include "main.h"
-#include "common.h"
+#include "setup.h"
 #include "display.h"
 #include "clock.h"
 #include "time.h"

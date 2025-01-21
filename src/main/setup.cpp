@@ -1,5 +1,5 @@
 #include "config.h"
-#include "common.h"
+#include "setup.h"
 #include "display.h"
 
 // NTP

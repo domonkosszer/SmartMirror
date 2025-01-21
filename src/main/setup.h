@@ -1,5 +1,5 @@
-#ifndef COMMON_H
-#define COMMON_H
+#ifndef SETUP_H
+#define SETUP_H
 
 #include "config.h"
 #include "display.h"
@@ -7,8 +7,8 @@
 #include <WiFi.h>
 #include <NTPClient.h>
 
-#define WIFI_SSID "DESKTOP-Q2FKEVH 1018"
-#define WIFI_PASSWORD "-1r4809M"
+#define WIFI_SSID "YOUR_SSID"
+#define WIFI_PASSWORD "YOUR_PASSWORD"
 
 extern int status;
 

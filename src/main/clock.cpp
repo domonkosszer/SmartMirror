@@ -1,4 +1,4 @@
-#include "common.h"
+#include "setup.h"
 #include "digit.h"
 #include "display.h"
 #include "clock.h"
